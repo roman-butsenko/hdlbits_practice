@@ -1,0 +1,34 @@
+module top_module();
+    
+    reg clk;
+    reg in;
+    reg [2:0] s;
+    reg out;
+    
+    initial begin
+       clk = 1'b0;
+       in = 1'b0;
+       s = 3'd2;
+        
+       #10 s = 3'd6; //10
+        #10 s = 3'd2; in = 1'b1; //20
+        #10 s = 3'd7; in = 1'b0; //30
+        #10 s = 3'd0; in = 1'b1; //40
+        #30 in = 1'b0; //70
+
+    end
+    
+    initial begin
+        forever #5 clk = ~clk;
+        // this had to be ina separate loop
+        // to be executed in paralell with the other
+        // initial block
+    end
+    
+    q7 instance_1 (
+        .clk (clk),
+        .in (in),
+        .s (s),
+        .out (out));
+    
+endmodule
