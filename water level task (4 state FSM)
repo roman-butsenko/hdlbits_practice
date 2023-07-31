@@ -17,10 +17,10 @@ module top_module (
     //the variable that controles the supplemental flow rate controller
     reg [0:0] supplem_flow = 1'b0;
     
-    assign out[0] = dfr;	// all fr are connected to their corresponding bit of out
-    assign out[1] = fr1;
-    assign out[2] = fr2;
-    assign out[3] = fr3;
+    assign dfr = out[0];	// all fr are connected to their corresponding bit of out
+    assign fr1 = out[1];
+    assign fr2 = out[2];
+    assign fr3 = out[3];
     
     parameter S0 = 0, S1 = 1, S2 = 2, S3 = 3;
     
