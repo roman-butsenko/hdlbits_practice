@@ -6,6 +6,12 @@ walking direction, and being bumped in the same cycle as ground disappears (but 
 or when the ground reappears while still falling, also does not affect the walking direction.
 */
 
+
+/*
+one-hot and derived by inspection (didn't work properly,
+entered walk_left and walk_right simoltaniously
+*/
+
 module top_module(
     input clk,
     input areset,    // Freshly brainwashed Lemmings walk left.
@@ -16,21 +22,52 @@ module top_module(
     output walk_right,
     output aaah ); 
     
-    assign walk_left = walk_right & bump_left | aaah & ground;
-    assign walk_right = walk_left & bump_right | aaah & ground;
-    assign aaah = walk_left & ~ground | walk_right & ~ground; 
+    reg [2:0] out; // = {walk_left, walk_right, aaah};
+    
+    assign walk_left = out[2];
+    assign walk_right = out[1];
+    assign aaah = out[0];
+    
+    reg prev_left;
+    reg prev_right;
+    
+    assign next_state[2] = walk_right & bump_right | prev_left & ground;
+    assign next_state[1] = walk_left & bump_left | ~prev_left & ground;
+    assign next_state[0] = ~ground; 
         
-    reg [2:0] state = {walk_left, walk_right, aaah};
+    reg [2:0] state;
     reg [2:0] next_state;
     
     always @(posedge clk, posedge areset)
-        begin
-            
-        if (areset)
-            state [2:0] = 3b'100;
-    	
-    	
-        
-    
+        begin            
+            if (areset)
+                state [2:0] <= 3'b100;
 
+            else begin
+                
+                if (walk_left & ground) begin
+                    prev_left <= 1;
+                    prev_right <= 0;
+                end
+                
+                if (walk_right & ground) begin
+                    prev_left <= 0;
+                    prev_right <= 1;
+                end
+                     
+                state <= next_state; 
+            end
+        end
+    
+    
+    //output logic
+    always @(*)
+        begin
+            case (state)
+                    3'b100: out [2:0] = {1'b1, 1'b0, 1'b0};
+                    3'b010: out [2:0] = {1'b0, 1'b1, 1'b0};
+                    3'b001: out [2:0] = {1'b0, 1'b0, 1'b1};
+            endcase
+        end
+        
 endmodule
