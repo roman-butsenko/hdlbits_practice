@@ -6,10 +6,13 @@ walking direction, and being bumped in the same cycle as ground disappears (but 
 or when the ground reappears while still falling, also does not affect the walking direction.
 */
 
-
 /*
 one-hot and derived by inspection (didn't work properly,
 entered walk_left and walk_right simoltaniously
+
+I figured it. There should be sparate states for falling right and falling left.
+But this wasn't implemented, I've desided to solve this task with more traditional FSM
+just for the sake of practice
 */
 
 module top_module(
@@ -71,3 +74,79 @@ module top_module(
         end
         
 endmodule
+
+//_________the "more regular" version of FSM___________
+
+module top_module(
+    input clk,
+    input areset,    // Freshly brainwashed Lemmings walk left.
+    input bump_left,
+    input bump_right,
+    input ground,
+    output reg walk_left,
+    output reg walk_right,
+    output reg aaah
+);
+
+    localparam WL_STATE = 2'd0,
+               WR_STATE = 2'd1,
+               FL_STATE = 2'd2,
+               FR_STATE = 2'd3;
+
+    reg [1:0] state = WL_STATE;
+    reg [1:0] next_state;
+
+    always @(posedge clk, posedge areset) begin
+        if (areset) state <= WL_STATE;
+        else state <= next_state;
+    end
+
+    always @(*) begin
+        case (state)
+            FL_STATE: begin
+                walk_left <= 1'b0;
+                walk_right <= 1'b0;
+                aaah <= 1'b1;
+                
+                if (ground) next_state = WL_STATE;
+                else if (~ground) next_state = FL_STATE;
+            end
+            FR_STATE: begin
+                walk_left <= 1'b0;
+                walk_right <= 1'b0;
+                aaah <= 1'b1;
+                
+                if (ground) next_state = WR_STATE;
+                else if (~ground) next_state = FR_STATE;
+            end
+            
+            WL_STATE: begin
+                walk_left <= 1'b1;
+                walk_right <= 1'b0;
+                aaah <= 1'b0;
+                
+                if (~ground) next_state = FL_STATE;
+                else if (bump_left) next_state = WR_STATE;
+                else if (bump_right) next_state = WL_STATE;
+                else next_state = WL_STATE;// these are VERY important.
+                // I've spent half an our on it just to be faced with the fact,
+                // that if the case statement is not given anything, the state
+                // becomes unresolved "X" (I thought it would remain the same and 
+                // synthesizer handels that)
+            end
+            
+            WR_STATE: begin
+                walk_left <= 1'b0;
+                walk_right <= 1'b1;
+                aaah <= 1'b0;
+                
+                if (~ground) next_state = FR_STATE;
+                else if (bump_right) next_state = WL_STATE;
+                else if (bump_left) next_state = WR_STATE;
+                else next_state = WR_STATE;
+            end
+            
+        endcase
+    end
+endmodule
+
