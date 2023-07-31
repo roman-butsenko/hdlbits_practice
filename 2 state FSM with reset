@@ -1,60 +1,88 @@
-module top_module(
+module top_module (
     input clk,
-    input areset,    // Asynchronous reset to state B
-    input in,
-    output out);//  
-
-    parameter A=0, B=1; 
-    reg state, next_state;
-
-    /*
-    hdlbits did try to help me, but I didn't take a hint,
-    comennted this piece if logic and wrote it like this
-    always @(*) begin    // This is a combinational always block
-        // State transition logic
-        if (state != next_state)
-            
-            
+    input reset,
+    input [3:1] s,
+    output fr3,
+    output fr2,
+    output fr1,
+    output dfr
+); 
+    
+    initial begin
+        fr3 = 1'b1;
     end
-	*/
-    always @(posedge clk, posedge areset) begin    // This is a sequential always block
-        // State flip-flops with asynchronous reset
-        if (areset) begin 
-            state <= B;
-        end
-        else begin
-            state <= (in == 1) ?  state : ~state;
-        end
+    // here I'll utulize the one-hot encoding and states derived by inspection,
+    // since it looked really intuitive to me
+    
+    reg [3:0] state;		// register, that has the current state
+    reg [3:0] next_state;   // register, that has the next state
+
+    //the variable that controles the supplemental flow rate controller
+    reg [0:0] supplem_flow = 1'b0;
+    
+    parameter S0 = 0, S1 = 1, S2 = 2, S3 = 3;
+
+    assign next_state [S0] = ~s[1] & ~s[2] & ~s[3];
+    assign next_state [S1] = s[1] & ~s[2] & ~s[3];
+    assign next_state [S2] = s[1] & s[2] & ~s[3];
+    assign next_state [S3] = s[1] & s[2] & s[3];
+    
+    // block that defines outputs
+    always @(posedge clk) begin
         
-        next_state = state;
+        if (reset) begin
+            state <= 4'b0001;
+        end
+    
+    	else begin
+            
+            
+            if (next_state != state) 
+            	supplem_flow <= (next_state < state);
+        	
+            state <= next_state;
+            
+            // sipplem_valve should be opened only when
+            // transutuoning from the state with higher water level to the
+            // state with lower water level
+    
+            // one-hot encoding with reversed case statement
+    
+            case (state)
+                4'b0001:
+                begin
+                    dfr <= supplem_flow[0];
+                    fr1 <= 1'b1;
+                    fr2 <= 1'b1;
+                    fr3 <= 1'b1;
+                    
+                end
+                4'b0010: 
+                begin
+                    dfr <= supplem_flow[0];
+                    fr1 <= 1'b1;
+                    fr2 <= 1'b1;
+                    fr3 <= 1'b0;
+                    
+                end
+                4'b0100: 
+                begin
+                    dfr <= supplem_flow[0];
+                    fr1 <= 1'b1;
+                    fr2 <= 1'b0;
+                    fr3 <= 1'b0;
+                    
+                end
+                4'b1000: 
+                begin
+                    dfr <= supplem_flow[0];
+                    fr1 <= 1'b0;
+                    fr2 <= 1'b0;
+                    fr3 <= 1'b0;
+                    
+                end
+            endcase
+        end
     end
-
-    // Output logic
-            assign out = (state == A) ? 0 : 1;
 
 endmodule
-
-
-// correction: this is what was intended:
-/*
-   always@(*) begin
-		case (state)
-			A: next = in ? A : B;
-			B: next = in ? B : A;
-		endcase
-    end
-    
-    
-    
-    // Edge-triggered always block (DFFs) for state flip-flops. Asynchronous reset.
-    always @(posedge clk, posedge areset) begin
-		if (areset) state <= B;		// Reset to state B
-        else state <= next;			// Otherwise, cause the state to transition
-	end
-		
-		
-		
-	// Combinational output logic. In this problem, an assign statement is the simplest.
-	// In more complex circuits, a combinational always block may be more suitable.
-	assign out = (state==B);
-*/
