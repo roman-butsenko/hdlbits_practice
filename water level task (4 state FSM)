@@ -1,0 +1,65 @@
+module top_module (
+    input clk,
+    input reset,
+    input [3:1] s,
+    output fr3,
+    output fr2,
+    output fr1,
+    output dfr
+); 
+    // here I'll utulize the one-hot encoding and states derived by inspection,
+    // since it looked really intuitive to me
+    
+    reg [3:0] state;		// register, that has the current state
+    reg [3:0] next_state;   // register, that has the next state
+    reg [3:0] out;			// register, from which the outputs will be supplied
+    
+    //the variable that controles the supplemental flow rate controller
+    reg [0:0] supplem_flow = 1'b0;
+    
+    assign out[0] = dfr;	// all fr are connected to their corresponding bit of out
+    assign out[1] = fr1;
+    assign out[2] = fr2;
+    assign out[3] = fr3;
+    
+    parameter S0 = 0, S1 = 1, S2 = 2, S3 = 3;
+    
+    
+    
+    // state transition logic block
+    always @(*) begin
+        next_state [S0] <= ~s[1] & ~s[2] & ~s[3];
+        next_state [S1] <= s[1] & ~s[2] & ~s[3];
+        next_state [S2] <= s[1] & s[2] & ~s[3];
+        next_state [S3] <= s[1] & s[2] & s[3];
+    end
+    
+    // block that defines outputs
+    always @ (posedge clk) begin
+        
+        if (reset) begin
+            state <= 4'b1;
+        end
+    
+    	else begin
+            
+            if (next_state != state) 
+            	supplem_flow <= (next_state < state);
+        	
+            // sipplem_valve should be opened only when
+            // transutuoning from the state with higher water level to the
+            // state with lower water level
+    
+            state <= next_state;
+            // one-hot encoding with reversed case statement
+    
+            case (1'b1)
+                state[S0]: out[3:0] <= {1'b1, 1'b1, 1'b1, supplem_flow[0]};
+                state[S1]: out[3:0] <= {1'b0, 1'b1, 1'b1, supplem_flow[0]};
+                state[S2]: out[3:0] <= {1'b0, 1'b0, 1'b1, supplem_flow[0]};
+                state[S3]: out[3:0] <= {1'b0, 1'b0, 1'b0, supplem_flow[0]};
+            endcase
+        end
+    end
+
+endmodule
