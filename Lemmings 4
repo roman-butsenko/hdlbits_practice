@@ -1,0 +1,124 @@
+/* 
+I skipped task 3 to save some time, it introduced "digging, gere it is:
+In addition to walking and falling, Lemmings can sometimes be told to do useful things, like dig
+(it starts digging when dig=1). A Lemming can dig if it is currently walking on ground (ground=1 and
+not falling), and will continue digging until it reaches the other side (ground=0). At that point,
+since there is no ground, it will fall (aaah!), then continue walking in its original direction once it 
+hits ground again. As with falling, being bumped while digging has no effect, and being told to dig when
+falling or when there is no ground is ignored.
+
+(In other words, a walking Lemming can fall, dig, or switch directions. If more than one of these
+conditions are satisfied, fall has higher precedence than dig, which has higher precedence than
+switching directions.)
+
+Task 4:
+Although Lemmings can walk, fall, and dig, Lemmings aren't invulnerable. If a Lemming falls for too
+long then hits the ground, it can splatter. In particular, if a Lemming falls for more than 20 clock
+cycles then hits the ground, it will splatter and cease walking, falling, or digging (all 4 outputs
+become 0), forever (Or until the FSM gets reset). There is no upper limit on how far a Lemming can
+fall before hitting the ground. Lemmings only splatter when hitting the ground; they do not splatter
+in mid-air.
+*/
+
+module top_module(
+    input clk,
+    input areset,    // Freshly brainwashed Lemmings walk left.
+    input bump_left,
+    input bump_right,
+    input ground,
+    input dig,
+    output walk_left,
+    output walk_right,
+    output aaah,
+    output digging ); 
+    
+    localparam 
+    WL = 1'd0,
+    WR = 1'd1,
+    DL = 1'd2,
+    DR = 1'd3,
+    FL = 1'd4,
+    FR = 1'd5,
+    SPLAT = 1'd6;
+    
+    reg [2:0] state;
+    reg [2:0] next_state;
+    
+    reg [6:0] fall_count = 0;
+    
+    reg [3:0] out;
+    
+    assign walk_left = out[0];
+    assign walk_right = out[1];
+    assign digging = out[2];
+    assign aaah = out[3];
+    
+    //clocking
+    always @ (posedge clk, posedge areset) begin
+        if (areset) state <= WL;
+        else begin 
+            if (state == FL || state == FR) fall_count <= fall_count + 1;
+            else fall_count <= 0;
+            state <= next_state;
+        end
+    end
+    
+    //state transition logic
+    always @(*) begin
+        case(state)
+			WL: begin
+                
+                if (~ground) next_state = FL;
+                else if (dig) next_state = DL;
+                else if (bump_left) next_state = WR;
+                else next_state = WL;
+            end
+            WR: begin
+
+                if (~ground) next_state = FR;
+                else if (dig) next_state = DR;
+                else if (bump_right) next_state = WL;
+                else next_state = WR;
+            end
+            FL: begin
+                
+                if (ground & fall_count > 19) next_state = SPLAT;                 
+                else if (ground & fall_count <= 19) next_state = WL;
+                else next_state = FL;
+            end
+            FR: begin
+                if (ground & fall_count > 19) next_state = SPLAT;
+                else if (ground & fall_count <= 19) next_state = WR; 
+                else next_state = FR;
+            end
+
+            DL: begin //right
+                if (~ground) next_state = FL;
+                else next_state = DL;
+            end
+            DR: begin //right
+                if (~ground) next_state = FL;
+                else next_state = DL;
+            end
+
+            SPLAT: begin
+               next_state = SPLAT; 
+            end
+        endcase
+    end
+            
+    
+    //output logic
+    always @(*) begin
+        case(state)
+            WL:  out[3:0] = {1'b1, 1'b0, 1'b0, 1'b0};
+            WR:  out[3:0] = {1'b0, 1'b1, 1'b0, 1'b0};
+            DL:  out[3:0] = {1'b0, 1'b0, 1'b1, 1'b0};
+            DR:  out[3:0] = {1'b0, 1'b0, 1'b1, 1'b0};
+            FL:  out[3:0] = {1'b0, 1'b0, 1'b0, 1'b1};
+            FR:  out[3:0] = {1'b0, 1'b0, 1'b0, 1'b1};
+            SPLAT:  out[3:0] = {1'b0, 1'b0, 1'b0, 1'b0};
+        endcase
+    end
+
+endmodule
