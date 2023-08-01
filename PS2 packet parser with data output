@@ -1,0 +1,66 @@
+module top_module(
+    input clk,
+    input [7:0] in,
+    input reset,    // Synchronous reset
+    output [23:0] out_bytes,
+    output done); //
+
+    // FSM from fsm_ps2
+
+    // New: Datapath to store incoming bytes.
+    
+    reg [23:0] memory;
+    
+     localparam [1:0]
+    B1 = 1,
+    B2 = 2,
+    B3 = 3,
+    DN = 0;
+    
+    reg [1:0] state;     		// without me specifying the size of these registors, 
+    reg [1:0] next_state;		// case B2 and B3 are never achived (probably because
+    							// it is initialised as 1-bit
+    
+    // State transition logic (combinational)
+    always @(*)
+        case(state)
+            B1: begin
+                if (in[3]) begin 
+                    next_state = B2;
+                    out_bytes [23:16] = in[7:0]; 
+                else next_state = B1;
+            end
+			B2: begin
+                next_state = B3;
+                out_bytes [15:8] = in[7:0];
+            end
+            B3:begin
+                next_state = DN;
+                out_bytes [7:0] = in[7:0];
+            end
+            DN: begin
+                if (in[3]) begin
+                    next_state = B2;
+                    
+                end
+                else next_state = B1;
+            end
+        endcase
+                
+    // State flip-flops (sequential)
+    always @(posedge clk) begin
+        if (reset) state <= B1;
+        else state <= next_state; 
+    end
+ 
+    // Output logic
+	assign done = (state == DN) ? 1 : 0;
+    
+    always @(posedge clk) begin
+        if (done)
+            out_bytes = memory;
+        else
+            out_bytes = 24'bx;
+    end
+
+endmodule
