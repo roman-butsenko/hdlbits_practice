@@ -1,0 +1,93 @@
+/* this task has the same FSM like one-hot
+task, so I've already solved it. I tried doing it 
+with more traditional state machine 
+
+it worked but I had to resert to looking at the "hint" in the task*/
+
+module top_module(
+    input clk,
+    input reset,    // Synchronous reset
+    input in,
+    output disc,
+    output flag,
+    output err);
+
+    reg [3:0] state, next_state;
+    
+    reg [3:0] bit_count;
+    
+    //one extra byte just in case
+    
+    localparam [3:0]
+    IDLE = 4'd0,
+    READY = 4'd1,
+    SET = 4'd2,
+    DISC = 4'd3,
+    INF = 4'd4,
+    ERR = 4'd5,
+    FLAG = 4'd6;
+    
+    always @ (posedge clk) begin
+        if (reset) begin
+            state <= IDLE;
+            bit_count <= 0;
+        end
+        else begin
+            state <= next_state;
+            case (next_state)
+                READY: bit_count = bit_count + 1;
+                default: begin
+                    bit_count = 0;
+                end
+            endcase
+        end
+    end
+    
+    always @ (*) begin
+        case(state)
+            IDLE: begin
+                next_state = (in) ? READY : IDLE;
+            end
+            READY: begin  
+                if (~in) next_state = IDLE;
+                else if (bit_count == 4 && in) next_state = SET;
+                else next_state = READY;
+            end
+            SET: next_state = (in) ? INF : DISC;
+            DISC: next_state = (in) ? READY: IDLE;
+            INF: next_state = (in) ? ERR : FLAG;
+            ERR: next_state = (in) ? ERR : IDLE;
+            FLAG: next_state = (in) ? READY: IDLE;
+        endcase
+    end
+    
+    assign flag = (state == FLAG);
+    assign disc = (state == DISC);
+    assign err = (state == ERR);
+    
+    
+    
+endmodule
+        case(state)
+            IDLE: begin
+                next_state = (in) ? READY : IDLE;
+            end
+            READY: begin  
+                if (bit_count == 4 && in) next_state = SET;
+                else next_state = READY;
+            end
+            SET: next_state = (in) ? INF : DISC;
+            DISC: next_state = IDLE;
+            INF: next_state = (in) ? ERR : FLAG;
+            ERR: next_state = (in) ? ERR : IDLE;
+            FLAG: next_state = IDLE;
+        endcase
+    end
+    
+    assign flag = (state == FLAG);
+    assign disc = (state == DISC);
+    assign err = (state == ERR);
+    
+    
+    
+endmodule
