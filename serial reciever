@@ -5,8 +5,8 @@ module top_module(
     output done
 ); 
     
-    reg [2:0] state;
-    reg [2:0] next_state;
+    reg [3:0] state;
+    reg [3:0] next_state;
     
     reg [31:0] bit_count = 32'b0;
     
@@ -17,21 +17,14 @@ module top_module(
     DONE = 4'd3,
     START = 4'd4;
     
-    initial begin
-        state = IDLE;
-    end
-    
-    always @(posedge clk)
-        if (reset) state <= IDLE;
-    	else state <= next_state;
-    
-    
     always @(posedge clk) begin
-        if (reset) begin
+         if (reset) begin
+			state <= IDLE;
             bit_count <= 0;
             done <= 0;
         end
-        else begin
+		else begin
+            state <= next_state;
             case(next_state)
                 DATA: begin 
                     done <= 0;
@@ -44,6 +37,78 @@ module top_module(
                 default: begin
                     bit_count <= 0;
                     done <= 0;
+                end
+            endcase
+        end
+    end
+    
+    always @(*) begin
+        case(state)
+            IDLE: begin
+                if (~in) begin
+                    next_state = DATA;
+                end
+                else next_state = IDLE;
+            end
+            DATA: begin              
+                if (bit_count == 4'd9 && in) next_state = DONE;
+                else if (bit_count == 4'd9 && ~in) next_state = ERROR;
+                else next_state = DATA;
+            end
+            ERROR: begin
+                if (in) next_state = IDLE;
+                else next_state = ERROR;
+            end
+    		DONE: begin
+                if (in) next_state = IDLE;
+                else if (~in) next_state = DATA;
+            end
+		endcase
+    end
+            
+endmodule
+
+
+// Or with blocking assignments:
+module top_module(
+    input clk,
+    input in,
+    input reset,    // Synchronous reset
+    output done
+); 
+    
+    reg [3:0] state;
+    reg [3:0] next_state;
+    
+    reg [31:0] bit_count = 32'b0;
+    
+    localparam [3:0]
+    IDLE = 4'd0,
+    DATA = 4'd1,
+    ERROR = 4'd2,
+    DONE = 4'd3,
+    START = 4'd4;
+    
+    always @(posedge clk) begin
+         if (reset) begin
+			state = IDLE;
+            bit_count = 0;
+            done = 0;
+        end
+		else begin
+            state = next_state;
+            case(state)
+                DATA: begin 
+                    done = 0;
+                    bit_count = bit_count + 1;
+                end
+                DONE: begin
+                    done = 1;
+                    bit_count = 0;
+                end
+                default: begin
+                    bit_count = 0;
+                    done = 0;
                 end
             endcase
         end
